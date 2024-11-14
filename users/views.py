@@ -4,21 +4,23 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
-from django.conf import settings
-from django.core.mail import send_mail
 from .models import Profile, Interest, User
 from .forms import CustomUserCreationForm, ProfileForm, InterestForm, MessageForm
-from common.utils import paginateObjects, searchProfiles
+from common.utils import paginate_objects, searchProfiles
 from django.db.models import Q
 from django.db import IntegrityError
 from django.db.models.query import QuerySet
+from common.utils import cache_query
+# TO DO Add email auth requests
+from django.conf import settings
+from django.core.mail import send_mail
 
 
 def landing(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
     if request.user.is_authenticated:
         return redirect('profiles')
     profiles, search_query = searchProfiles(request)
-    custom_range, profiles = paginateObjects(request, profiles, 3)
+    custom_range, profiles = paginate_objects(request, profiles, 3)
     context = {
         'profiles': profiles, 
         'search_query': search_query,
@@ -48,7 +50,7 @@ def landingLogin(request:HttpRequest) -> HttpResponseRedirect|HttpResponse:
 
 def profiles(request: HttpRequest) -> HttpResponse:
     profiles, search_query = searchProfiles(request)
-    custom_range, profiles = paginateObjects(request, profiles, 3)
+    custom_range, profiles = paginate_objects(request, profiles, 3)
     context = {
         'profiles': profiles, 
         'search_query': search_query,
@@ -110,7 +112,7 @@ def userProfile(request:HttpRequest, username:str) -> HttpResponse:
     profile = Profile.objects.get(username=username)
     interests:QuerySet[Interest] = profile.interest_set.all()
     profiles:QuerySet[Profile] = profile.follows.all()
-    custom_range, profiles = paginateObjects(request, 
+    custom_range, profiles = paginate_objects(request, 
         profiles, 3)
     context = {
         'profile': profile,
@@ -134,11 +136,10 @@ def userAccount(request:HttpRequest) -> HttpResponse:
     profile:Profile = request.user.profile
     interests = profile.interest_set.all()
     profiles = profile.follows.all()
-    custom_range, profiles = paginateObjects(request, profiles, 3)
+    custom_range, profiles = paginate_objects(request, profiles, 3)
     context = {'profile': profile, 'profiles': profiles,
     'interests': interests, 'custom_range': custom_range}
     return render(request, 'users/account.html', context)
-
 
 
 @login_required
