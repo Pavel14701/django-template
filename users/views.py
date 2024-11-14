@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
-from .models import Profile, Interest, User
+from .models import Profile, Interest
 from .forms import CustomUserCreationForm, ProfileForm, InterestForm, MessageForm
 from common.utils import paginate_objects, searchProfiles
 from django.db.models import Q
@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 
 
+@cache_query(60*15)
 def landing(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
     if request.user.is_authenticated:
         return redirect('profiles')
@@ -29,6 +30,7 @@ def landing(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
     return render(request, 'landing.html', context)
 
 
+@cache_query(60*15)
 def landingLogin(request:HttpRequest) -> HttpResponseRedirect|HttpResponse:
     if request.method == 'POST':
         username = request.POST['username']
@@ -48,6 +50,7 @@ def landingLogin(request:HttpRequest) -> HttpResponseRedirect|HttpResponse:
     return redirect('landing')
 
 
+@cache_query(60*15)
 def profiles(request: HttpRequest) -> HttpResponse:
     profiles, search_query = searchProfiles(request)
     custom_range, profiles = paginate_objects(request, profiles, 3)
@@ -59,6 +62,7 @@ def profiles(request: HttpRequest) -> HttpResponse:
     return render(request, 'users/profiles.html', context)
 
 
+@cache_query(60*15)
 def loginUser(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
     if request.user.is_authenticated:
         return redirect('profiles')
@@ -79,28 +83,26 @@ def loginUser(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
     return render(request, 'users/login_register.html')
 
 
-def logoutUser(request:HttpRequest) -> HttpResponseRedirect:
+@cache_query(60*15)
+def logout_user(request:HttpRequest) -> HttpResponseRedirect:
     logout(request)
     messages.info(request, 'Вы вышли из учетной записи')
     return redirect('login')
 
 
-def registerUser(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
-    page = 'register'
-    form = CustomUserCreationForm()
+@cache_query(60*15)
+def register_user(request:HttpRequest) -> HttpResponseRedirect | HttpResponse:
+    form = CustomUserCreationForm(request.POST or None)
     if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            return _extracted_from_registerUser_7(form, request)
+            return _create_user_and_login(form, request)
         else:
-            messages.success(request, 'Во время регистрации возникла ошибка')
-    context = {'page': page, 'form': form}
-    return render(request, 
-        'users/login_register.html', context)
+            messages.error(request, 'Во время регистрации возникла ошибка')
+    context = {'page': 'register', 'form': form}
+    return render(request, 'users/login_register.html', context)
 
-
-def _extracted_from_registerUser_7(form:CustomUserCreationForm, request:HttpRequest) -> HttpResponseRedirect:
-    user:User = form.save(commit=False)
+def _create_user_and_login(form:CustomUserCreationForm, request:HttpRequest) -> HttpResponseRedirect:
+    user = form.save(commit=False)
     user.username = user.username.lower()
     user.save()
     messages.success(request, 'Аккаунт успешно создан!')
@@ -108,7 +110,7 @@ def _extracted_from_registerUser_7(form:CustomUserCreationForm, request:HttpRequ
     return redirect('edit-account')
 
 
-def userProfile(request:HttpRequest, username:str) -> HttpResponse:
+def user_profile(request:HttpRequest, username:str) -> HttpResponse:
     profile = Profile.objects.get(username=username)
     interests:QuerySet[Interest] = profile.interest_set.all()
     profiles:QuerySet[Profile] = profile.follows.all()
@@ -132,8 +134,8 @@ def profiles_by_interest(request:HttpRequest, interest_slug:str) -> HttpResponse
 
 
 @login_required
-def userAccount(request:HttpRequest) -> HttpResponse:
-    profile:Profile = request.user.profile
+def user_account(request:HttpRequest) -> HttpResponse:
+    profile = request.user.profile
     interests = profile.interest_set.all()
     profiles = profile.follows.all()
     custom_range, profiles = paginate_objects(request, profiles, 3)
@@ -143,8 +145,8 @@ def userAccount(request:HttpRequest) -> HttpResponse:
 
 
 @login_required
-def editAccount(request:HttpRequest) -> HttpResponseRedirect|HttpResponse:
-    profile:str = request.user.profile
+def edit_account(request:HttpRequest) -> HttpResponseRedirect|HttpResponse:
+    profile = request.user.profile
     form = ProfileForm(instance=profile)
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES, 
@@ -157,8 +159,8 @@ def editAccount(request:HttpRequest) -> HttpResponseRedirect|HttpResponse:
 
 
 @login_required
-def createInterest(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
-    profile:str = request.user.profile
+def create_interest(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
+    profile = request.user.profile
     form = InterestForm()
     if request.method == 'POST':
         form = InterestForm(request.POST)
@@ -177,9 +179,9 @@ def createInterest(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
 
 
 @login_required
-def updateInterest(request: HttpRequest, interest_slug:str) -> HttpResponseRedirect|HttpResponse:
-    profile:str = request.user.profile
-    interest:str = profile.interest_set.get(slug=interest_slug)
+def update_interest(request: HttpRequest, interest_slug:str) -> HttpResponseRedirect|HttpResponse:
+    profile = request.user.profile
+    interest = profile.interest_set.get(slug=interest_slug)
     form = InterestForm(instance=interest)
     if request.method == 'POST':
         form = InterestForm(request.POST, instance=interest)
@@ -192,7 +194,7 @@ def updateInterest(request: HttpRequest, interest_slug:str) -> HttpResponseRedir
 
 
 @login_required
-def deleteInterest(request:HttpRequest, interest_slug:str) -> HttpResponseRedirect|HttpResponse:
+def delete_interest(request:HttpRequest, interest_slug:str) -> HttpResponseRedirect|HttpResponse:
     profile = request.user.profile
     interest = profile.interest_set.get(slug=interest_slug)
     if request.method == 'POST':
@@ -214,9 +216,9 @@ def inbox(request:HttpRequest) -> HttpResponse:
 
 
 @login_required
-def viewMessage(request, pk):
+def view_message(request:HttpRequest, pk:int) -> HttpResponse:
     profile = request.user.profile
-    message = profile.messages.get(id=pk)
+    message= profile.messages.get(id=pk)
     if message.is_read is False:
         message.is_read = True
         message.save()
@@ -225,7 +227,7 @@ def viewMessage(request, pk):
 
 
 
-def createMessage(request:HttpRequest, username:str) -> HttpResponseRedirect|HttpResponse:
+def create_message(request:HttpRequest, username:str) -> HttpResponseRedirect|HttpResponse:
     recipient = Profile.objects.get(username=username)
     form = MessageForm()
     try:
@@ -240,8 +242,7 @@ def createMessage(request:HttpRequest, username:str) -> HttpResponseRedirect|Htt
     return render(request, 'users/message_form.html', context)    
 
 
-def _extracted_from_createMessage_11(
-    form:MessageForm, sender:str, recipient:str, request:HttpRequest) -> HttpResponseRedirect:
+def _extracted_from_createMessage_11(form:MessageForm, sender:User, recipient:User, request:HttpRequest) -> HttpResponseRedirect:
     message = form.save(commit=False)
     message.sender = sender
     message.recipient = recipient

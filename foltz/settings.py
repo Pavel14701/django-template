@@ -24,10 +24,26 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+
+
     'polls.apps.PollsConfig',
     'users.apps.UsersConfig',
     'quizzes.apps.QuizzesConfig',
     'blog.apps.BlogConfig',
+
+
+    'rest_framework',
+    'drf_spectacular',
+
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'cart',
+    'checkout',
+    'products',
+    'crispy_forms',
+    'django_filters',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -79,6 +95,10 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
@@ -99,4 +119,17 @@ CACHES = {
         }
     }
 }
+SITE_ID = 1
+LOGIN_REDIRECT_URL = '/'
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+# SWAGGER
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'E-Commerce API',
+    'VERSION': '1.0.0',
+}
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 

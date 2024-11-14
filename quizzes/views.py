@@ -6,6 +6,7 @@ from django.db.models import F
 from .models import Quiz, Question, Answer, Choice, Result
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from common.utils import cache_query
+from django.db.models import QuerySet
 
 
 @login_required
@@ -24,7 +25,7 @@ def quizzes(request:HttpRequest) -> HttpResponse:
 
 @login_required
 @cache_query(60*15)
-def display_quiz(request:HttpRequest, quiz_id:str) -> HttpResponseRedirect:
+def display_quiz(request:HttpRequest, quiz_id:int) -> HttpResponseRedirect:
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     question = quiz.question_set.first()
     return redirect(reverse('quizzes:display_question', 
@@ -34,7 +35,7 @@ def display_quiz(request:HttpRequest, quiz_id:str) -> HttpResponseRedirect:
 
 @login_required
 @cache_query(60*15)
-def display_question(request:HttpRequest, quiz_id:str, question_id:str) -> HttpResponse:
+def display_question(request:HttpRequest, quiz_id:int, question_id:int) -> HttpResponse:
     profile = request.user.profile
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     questions = quiz.question_set.all()
@@ -55,7 +56,7 @@ def display_question(request:HttpRequest, quiz_id:str, question_id:str) -> HttpR
 
 @login_required
 @cache_query(60*15)
-def grade_question(request:HttpRequest, quiz_id:str, question_id:str) -> HttpResponse:
+def grade_question(request:HttpRequest, quiz_id:int, question_id:int) -> HttpResponse:
     question = get_object_or_404(Question, pk=question_id)
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     if not question.user_can_answer(request.user):
@@ -77,7 +78,7 @@ def grade_question(request:HttpRequest, quiz_id:str, question_id:str) -> HttpRes
     })
 
 
-def _process_answer(request:HttpRequest, question:str, correct_answer:str) -> bool:
+def _process_answer(request:HttpRequest, question:Question, correct_answer:str) -> bool:
     if question.qtype == 'multiple':
         answers_ids = request.POST.getlist('answer')
         user_answers = [Answer.objects.get(pk=answer_id).name for answer_id in answers_ids]
@@ -96,7 +97,7 @@ def _save_choice(user:str, question:str, answer:str) -> None:
     choice.save()
 
 
-def _update_result(user:str, quiz:str, is_correct:bool) -> None:
+def _update_result(user:str, quiz:Quiz, is_correct:bool) -> None:
     result, created = Result.objects.get_or_create(user=user, quiz=quiz)
     if is_correct:
         result.correct = F('correct') + 1
@@ -107,7 +108,7 @@ def _update_result(user:str, quiz:str, is_correct:bool) -> None:
 
 @login_required
 @cache_query(60*15)
-def quiz_results(request:HttpRequest, quiz_id:str) -> HttpResponse:
+def quiz_results(request:HttpRequest, quiz_id:int) -> HttpResponse:
     profile = request.user.profile
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     questions = quiz.question_set.all()

@@ -21,7 +21,7 @@ def questions(request:HttpRequest) -> HttpResponse:
 
 
 @login_required()
-def question(request:HttpRequest, question_id:str) -> HttpResponse:
+def question(request:HttpRequest, question_id:int) -> HttpResponse:
     context = {
         'question': Question.objects.get(pk=question_id), 
         'profile': request.user.profile
@@ -30,7 +30,7 @@ def question(request:HttpRequest, question_id:str) -> HttpResponse:
 
 
 @login_required()
-def results(request:HttpRequest, question_id:str) -> HttpResponse:
+def results(request:HttpRequest, question_id:int) -> HttpResponse:
     question = get_object_or_404(Question, pk=question_id)
     votes = question.choice_set.select_related('question').all() 
     labels, data = zip(*[(item.name, item.votes) for item in votes])
@@ -44,7 +44,7 @@ def results(request:HttpRequest, question_id:str) -> HttpResponse:
 
 
 @login_required
-def vote(request: HttpRequest, question_id: str) -> HttpResponseRedirect|HttpResponse:
+def vote(request: HttpRequest, question_id: int) -> HttpResponseRedirect|HttpResponse:
     profile = request.user.profile
     question = get_object_or_404(Question, pk=question_id)
     if request.method != 'POST':
