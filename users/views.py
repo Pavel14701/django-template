@@ -89,17 +89,21 @@ def registerUser(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user:User = form.save(commit=False)
-            user.username = user.username.lower()
-            user.save()
-            messages.success(request, 'Аккаунт успешно создан!')
-            login(request, user)
-            return redirect('edit-account')
+            return _extracted_from_registerUser_7(form, request)
         else:
             messages.success(request, 'Во время регистрации возникла ошибка')
     context = {'page': page, 'form': form}
     return render(request, 
         'users/login_register.html', context)
+
+
+def _extracted_from_registerUser_7(form:CustomUserCreationForm, request:HttpRequest) -> HttpResponseRedirect:
+    user:User = form.save(commit=False)
+    user.username = user.username.lower()
+    user.save()
+    messages.success(request, 'Аккаунт успешно создан!')
+    login(request, user)
+    return redirect('edit-account')
 
 
 def userProfile(request:HttpRequest, username:str) -> HttpResponse:
@@ -109,8 +113,10 @@ def userProfile(request:HttpRequest, username:str) -> HttpResponse:
     custom_range, profiles = paginateObjects(request, 
         profiles, 3)
     context = {
-        'profile': profile, 'profiles': profiles,
-        'interests': interests, 'custom_range': custom_range
+        'profile': profile,
+        'profiles': profiles,
+        'interests': interests,
+        'custom_range': custom_range
     }
     return render(request, 'users/user-profile.html', context)
 
@@ -124,13 +130,11 @@ def profiles_by_interest(request:HttpRequest, interest_slug:str) -> HttpResponse
 
 
 @login_required
-def userAccount(request):
-    profile = request.user.profile
+def userAccount(request:HttpRequest) -> HttpResponse:
+    profile:Profile = request.user.profile
     interests = profile.interest_set.all()
     profiles = profile.follows.all()
-    custom_range, profiles = paginateObjects(request, 
-        profiles, 3)
-
+    custom_range, profiles = paginateObjects(request, profiles, 3)
     context = {'profile': profile, 'profiles': profiles,
     'interests': interests, 'custom_range': custom_range}
     return render(request, 'users/account.html', context)
@@ -138,32 +142,27 @@ def userAccount(request):
 
 
 @login_required
-def editAccount(request):
-    profile = request.user.profile
+def editAccount(request:HttpRequest) -> HttpResponseRedirect|HttpResponse:
+    profile:str = request.user.profile
     form = ProfileForm(instance=profile)
-
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES, 
             instance=profile)
         if form.is_valid():
             form.save()
-
             return redirect('account')
     context = {'form': form}
- 
-    return render(request, 
-        'users/profile_form.html', context)
+    return render(request, 'users/profile_form.html', context)
 
 
 @login_required
-def createInterest(request):
-    profile = request.user.profile
+def createInterest(request: HttpRequest) -> HttpResponseRedirect|HttpResponse:
+    profile:str = request.user.profile
     form = InterestForm()
-
     if request.method == 'POST':
         form = InterestForm(request.POST)
         if form.is_valid():
-            interest = form.save(commit=False)
+            interest:Interest = form.save(commit=False)
             interest.description = request.POST.get('description')
             interest.profile = profile
             try:
@@ -172,45 +171,39 @@ def createInterest(request):
                 return redirect('account')
             except IntegrityError:
                 form.add_error('name', 'У вас уже есть интерес с таким именем и слагом')
-
     context = {'form': form}
     return render(request, 'users/interest_form.html', context)
 
 
 @login_required
-def updateInterest(request, interest_slug):
-    profile = request.user.profile
-    interest = profile.interest_set.get(slug=interest_slug)
+def updateInterest(request: HttpRequest, interest_slug:str) -> HttpResponseRedirect|HttpResponse:
+    profile:str = request.user.profile
+    interest:str = profile.interest_set.get(slug=interest_slug)
     form = InterestForm(instance=interest)
-
     if request.method == 'POST':
         form = InterestForm(request.POST, instance=interest)
         if form.is_valid():
             form.save()
-            messages.success(request, 
-                'Интерес успешно обновлен')
+            messages.success(request, 'Интерес успешно обновлен')
             return redirect('account')
-
     context = {'form': form}
-    return render(request, 
-        'users/interest_form.html', context)
+    return render(request, 'users/interest_form.html', context)
 
 
 @login_required
-def deleteInterest(request, interest_slug):
+def deleteInterest(request:HttpRequest, interest_slug:str) -> HttpResponseRedirect|HttpResponse:
     profile = request.user.profile
     interest = profile.interest_set.get(slug=interest_slug)
     if request.method == 'POST':
         interest.delete()
         messages.success(request, 'Интерес успешно удален')
         return redirect('account')
-
     context = {'object': interest}
     return render(request, 'delete_template.html', context)
 
 
 @login_required
-def inbox(request):
+def inbox(request:HttpRequest) -> HttpResponse:
     profile = request.user.profile
     messageRequests = profile.messages.all()
     unreadCount = messageRequests.filter(is_read=False).count()
@@ -231,38 +224,37 @@ def viewMessage(request, pk):
 
 
 
-def createMessage(request, username):
+def createMessage(request:HttpRequest, username:str) -> HttpResponseRedirect|HttpResponse:
     recipient = Profile.objects.get(username=username)
     form = MessageForm()
-
     try:
         sender = request.user.profile
-    except:
+    except Exception:
         sender = None
-
     if request.method == 'POST':
         form = MessageForm(request.POST)
         if form.is_valid():
-            message = form.save(commit=False)
-            message.sender = sender
-            message.recipient = recipient
-
-            if sender:
-                message.name = sender.name
-                message.email = sender.email
-            message.save()
-
-            messages.success(request, 
-                'Сообщение успешно отправлено!')
-            return redirect('user-profile', 
-                username=recipient.username)
-
+            return _extracted_from_createMessage_11(form, sender, recipient, request)
     context = {'recipient': recipient, 'form': form}
-    return render(request, 
-        'users/message_form.html', context)    
+    return render(request, 'users/message_form.html', context)    
+
+
+def _extracted_from_createMessage_11(
+    form:MessageForm, sender:str, recipient:str, request:HttpRequest) -> HttpResponseRedirect:
+    message = form.save(commit=False)
+    message.sender = sender
+    message.recipient = recipient
+    if sender:
+        message.name = sender.name
+        message.email = sender.email
+    message.save()
+    messages.success(request, 
+        'Сообщение успешно отправлено!')
+    return redirect('user-profile', username=recipient.username)    
+
 
 @login_required
-def follow_unfollow(request, username):
+def follow_unfollow(request:HttpRequest, username:str) -> HttpResponseRedirect:
     profile = Profile.objects.get(username=username)
     if request.method == 'POST':
         current_user_profile = request.user.profile

@@ -7,22 +7,25 @@ from django.forms import ModelForm, FileInput
 class CustomUserCreationForm(UserCreationForm):
     class Meta:
         model = User
-        fields = ['first_name', 'email', 'username', 
-        'password1', 'password2']
+        fields = [
+            'first_name', 'email', 'phone', 
+            'username', 'password1', 'password2'
+        ]
         labels = {
             'first_name': 'Имя и фамилия',
             'email': 'Email', 
+            'phone': 'Номер телефона',
             'username':'Логин', 
             'password1':'Пароль', 
             'password2': 'Подтверждение пароля'
-
         }
 
     def __init__(self, *args, **kwargs):
         super(CustomUserCreationForm, self).__init__(*args, **kwargs)
-
         for name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'form-control input-box form-ensurance-header-control'})
+            field.widget.attrs.update(
+                {'class': 'form-control input-box form-ensurance-header-control'}
+            )
 
 
 class ProfileForm(ModelForm):
@@ -44,14 +47,14 @@ class ProfileForm(ModelForm):
             'about': 'Подробнее о себе',
             'image': 'Изменить фото профиля',
         }
-        widgets = {
-            'image': FileInput(),
-        }
+        widgets = {'image': FileInput(),}
     def __init__(self, *args, **kwargs):
         super(ProfileForm, self).__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'form-control input-box form-ensurance-header-control'})
-                
+            field.widget.attrs.update(
+                {'class': 'form-control input-box form-ensurance-header-control'}
+            )
+
 
 class InterestForm(ModelForm):
     class Meta:
@@ -65,16 +68,17 @@ class InterestForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(InterestForm, self).__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'form-control input-box form-ensurance-header-control'})
-
-
+            field.widget.attrs.update(
+                {'class': 'form-control input-box form-ensurance-header-control'}
+            )
 
 
 class MessageForm(ModelForm):
     class Meta:
         model = Message
         fields = ['name', 'email', 'subject', 'body']
-        labels = {'name': 'Имя и фамилия',
+        labels = {
+            'name': 'Имя и фамилия',
             'email': 'Email', 
             'subject':'Тема сообщения',
             'body':'Текст сообщения'
@@ -83,4 +87,6 @@ class MessageForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(MessageForm, self).__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'form-control input-box form-ensurance-header-control'})
+            field.widget.attrs.update(
+                {'class': 'form-control input-box form-ensurance-header-control'}
+            )
